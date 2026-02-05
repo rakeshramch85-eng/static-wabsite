@@ -29,7 +29,7 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat 'echo %DOCKER_PASS% | docker login -u %rakeshramch% --Ramch@123-stdin'
+                    bat 'echo %Ramch@123% | docker login -u %rakeshramch% --Ramch@123-stdin'
                 }
             }
         }
