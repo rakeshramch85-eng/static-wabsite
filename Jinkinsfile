@@ -2,42 +2,63 @@ pipeline {
     agent any
 
     environment {
-        // APNA DOCKER HUB USERNAME YAHA LIKHEIN
-        DOCKER_USER = "aapka_username" 
-        IMAGE_NAME = "static-website"
-        // Credentials ID jo Jenkins mein banayi hai
-        DOCKER_HUB_CREDS = 'docker-hub-creds'
+        DOCKER_IMAGE = "amarjeet001/static-web"
+        DOCKER_TAG = "19"
+        CONTAINER_NAME = "static-website"
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
-                git 'https://github.com/rakeshramch85-eng/static-wabsite.git'
+                git branch: 'main',
+                    url: 'https://github.com/amarjeetchaurasiya27-cyber/static-website.git'
             }
         }
 
-        stage('Build Image') {
+        stage('Build Docker Image') {
             steps {
-                // Windows ke liye bat command
-                bat "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
+                bat "docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% ."
             }
         }
 
-        stage('Login & Push to Docker Hub') {
+        stage('Login to Docker Hub') {
             steps {
-                // withCredentials se password secure rehta hai
-                withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CREDS}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER_ID')]) {
-                    bat "docker login -u %DOCKER_USER_ID% -p %DOCKER_PASS%"
-                    bat "docker push ${DOCKER_USER}/${IMAGE_NAME}:latest"
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat """
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    """
                 }
+            }
+        }
+
+        stage('Push Image to Docker Hub') {
+            steps {
+                bat "docker push %DOCKER_IMAGE%:%DOCKER_TAG%"
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                bat """
+                docker stop %CONTAINER_NAME% 2>nul || echo No running container
+                docker rm %CONTAINER_NAME% 2>nul || echo No container to remove
+                docker run -d -p 7765:80 --name %CONTAINER_NAME% %DOCKER_IMAGE%:%DOCKER_TAG%
+                """
             }
         }
     }
 
     post {
-        always {
-            // Cleanup: Local se image remove karna taaki space bache
-            bat "docker logout"
+        success {
+            echo "✅ Image pushed successfully & App deployed at http://<JENKINS-IP>:7765"
+        }
+        failure {
+            echo "❌ Pipeline Failed"
         }
     }
 }
