@@ -29,14 +29,14 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                    bat 'echo %DOCKER_PASS% | docker login -u %rakeshramch% --Ramch@123-stdin'
                 }
             }
         }
 
         stage('Push Image') {
             steps {
-                bat 'docker push %DOCKER_IMAGE%:%DOCKER_TAG%'
+                bat 'docker push %rakeshramch/static-web%:%/static-web1%'
             }
         }
 
