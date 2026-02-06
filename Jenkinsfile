@@ -41,12 +41,45 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Create / Update Kubernetes (Windows)') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat """
-                    kubectl version --client
-                    kubectl set image deployment/%DEPLOYMENT_NAME% static-web=%DOCKER_IMAGE%:%DOCKER_TAG% -n %KUBE_NAMESPACE%
+                    echo apiVersion: apps/v1> deployment.yaml
+                    echo kind: Deployment>> deployment.yaml
+                    echo metadata:>> deployment.yaml
+                    echo   name: %DEPLOYMENT_NAME%>> deployment.yaml
+                    echo spec:>> deployment.yaml
+                    echo   replicas: 2>> deployment.yaml
+                    echo   selector:>> deployment.yaml
+                    echo     matchLabels:>> deployment.yaml
+                    echo       app: static-web>> deployment.yaml
+                    echo   template:>> deployment.yaml
+                    echo     metadata:>> deployment.yaml
+                    echo       labels:>> deployment.yaml
+                    echo         app: static-web>> deployment.yaml
+                    echo     spec:>> deployment.yaml
+                    echo       containers:>> deployment.yaml
+                    echo       - name: static-web>> deployment.yaml
+                    echo         image: %DOCKER_IMAGE%:%DOCKER_TAG%>> deployment.yaml
+                    echo         ports:>> deployment.yaml
+                    echo         - containerPort: 80>> deployment.yaml
+
+                    echo apiVersion: v1> service.yaml
+                    echo kind: Service>> service.yaml
+                    echo metadata:>> service.yaml
+                    echo   name: static-web-service>> service.yaml
+                    echo spec:>> service.yaml
+                    echo   type: NodePort>> service.yaml
+                    echo   selector:>> service.yaml
+                    echo     app: static-web>> service.yaml
+                    echo   ports:>> service.yaml
+                    echo   - port: 80>> service.yaml
+                    echo     targetPort: 80>> service.yaml
+                    echo     nodePort: 30007>> service.yaml
+
+                    kubectl apply -f deployment.yaml -n %KUBE_NAMESPACE%
+                    kubectl apply -f service.yaml -n %KUBE_NAMESPACE%
                     kubectl rollout status deployment/%DEPLOYMENT_NAME% -n %KUBE_NAMESPACE%
                     """
                 }
@@ -56,7 +89,8 @@ pipeline {
 
     post {
         success {
-            echo "✅ Windows Jenkins: Docker image pushed & K8s deployment updated"
+            echo "✅ WINDOWS Jenkins: Docker build → Push → Kubernetes Deploy SUCCESS"
+            echo "🌐 App: http://<NODE-IP>:30007"
         }
         failure {
             echo "❌ Pipeline Failed on Windows"
