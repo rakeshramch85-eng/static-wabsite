@@ -56,3 +56,15 @@ pipeline {
     }
   }
 }
+pipeline {
+    agent any
+
+    stages {
+        stage('Docker Test') {
+            steps {
+                bat '"C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" version'
+                bat '"C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" ps'
+            }
+        }
+    }
+}
