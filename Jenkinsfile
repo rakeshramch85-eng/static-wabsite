@@ -13,7 +13,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/<YOUR-GITHUB-USERNAME>/<REPO-NAME>.git'
+                    url: 'https://github.com/rakeshramch85-eng/static-wabsite.git'
             }
         }
 
@@ -45,6 +45,7 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat """
+                    kubectl version --client
                     kubectl set image deployment/%DEPLOYMENT_NAME% static-web=%DOCKER_IMAGE%:%DOCKER_TAG% -n %KUBE_NAMESPACE%
                     kubectl rollout status deployment/%DEPLOYMENT_NAME% -n %KUBE_NAMESPACE%
                     """
@@ -55,10 +56,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Docker image pushed & Kubernetes deployment updated successfully"
+            echo "✅ Windows Jenkins: Docker image pushed & K8s deployment updated"
         }
         failure {
-            echo "❌ Pipeline Failed"
+            echo "❌ Pipeline Failed on Windows"
         }
     }
 }
