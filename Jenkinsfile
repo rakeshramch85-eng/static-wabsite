@@ -45,14 +45,14 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat """
-                    echo Applying Kubernetes YAML files...
+                    echo Applying Kubernetes manifests...
                     kubectl apply -f deployment.yaml -n %KUBE_NAMESPACE%
                     kubectl apply -f service.yaml -n %KUBE_NAMESPACE%
 
-                    echo Updating image with new build tag...
+                    echo Updating deployment image...
                     kubectl set image deployment/%DEPLOYMENT_NAME% static-web=%DOCKER_IMAGE%:%DOCKER_TAG% -n %KUBE_NAMESPACE%
 
-                    echo Checking rollout status...
+                    echo Waiting for rollout...
                     kubectl rollout status deployment/%DEPLOYMENT_NAME% -n %KUBE_NAMESPACE%
                     """
                 }
@@ -62,11 +62,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ SUCCESS: Docker image pushed & Kubernetes deployed via Jenkins (Windows)"
-            echo "🌐 Access app via NodePort (check service.yaml)"
+            echo "✅ SUCCESS: Jenkins → Docker → Docker Hub → Kubernetes (Windows)"
         }
         failure {
-            echo "❌ Pipeline Failed on Windows Jenkins"
+            echo "❌ Pipeline Failed"
         }
     }
 }
