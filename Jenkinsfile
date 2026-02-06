@@ -1,62 +1,58 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        DOCKER_IMAGE = "rakeshramch/static-web"
-        DOCKER_TAG = "${BUILD_NUMBER}"
-        CONTAINER_NAME = "static-website"
+  environment {
+    IMAGE = "rakeshramch/static_wab"
+    TAG = "latest"
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        git branch: 'main',
+            url: 'https://github.com/rakeshramch85-eng/static-wabsite.git'
+      }
     }
 
-    stages {
-
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/rakeshramch85-eng/static-wabsite.git'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                bat 'docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% .'
-            }
-        }
-
-        stage('Docker Hub Login') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    bat 'echo %Ramch@123% | docker login -u %rakeshramch% --Ramch@123-stdin'
-                }
-            }
-        }
-
-        stage('Push Image') {
-            steps {
-                bat 'docker push %rakeshramch/static-web%:%/static-web1%'
-            }
-        }
-
-        stage('Deploy Container') {
-            steps {
-                bat '''
-                docker stop %CONTAINER_NAME% 2>nul || echo No running container
-                docker rm %CONTAINER_NAME% 2>nul || echo No container to remove
-                docker run -d -p 7765:80 --name %CONTAINER_NAME% %DOCKER_IMAGE%:%DOCKER_TAG%
-                '''
-            }
-        }
+    stage('Build Docker Image') {
+      steps {
+        powershell 'docker build -t $env:IMAGE:$env:TAG .'
+      }
     }
 
-    post {
-        success {
-            echo "✅ Website live at: http://<SERVER-IP>:7765"
+    stage('Push to DockerHub') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'dockerhub',
+            usernameVariable: 'DOCKER_USER',
+            passwordVariable: 'DOCKER_PASS'
+          )
+        ]) {
+          powershell '$env:DOCKER_PASS | docker login -u $env:DOCKER_USER --password-stdin'
+          powershell 'docker push $env:IMAGE:$env:TAG'
         }
-        failure {
-            echo "❌ Pipeline Failed – check logs"
-        }
+      }
     }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        withCredentials([
+          file(credentialsId: 'kubeconfig_cred', variable: 'KCFG')
+        ]) {
+          powershell '''
+            kubectl --kubeconfig=$env:KCFG set image deployment/static-site-deploy static-site=$env:IMAGE:$env:TAG
+            kubectl --kubeconfig=$env:KCFG rollout status deployment/static-site-deploy
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      powershell 'docker logout || echo "Logout failed but safe"'
+    }
+  }
 }
