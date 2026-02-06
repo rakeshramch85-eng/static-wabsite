@@ -2,10 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "rakeshramch/static-web"
-        DOCKER_TAG = "${BUILD_NUMBER}"
-        KUBE_NAMESPACE = "default"
-        DEPLOYMENT_NAME = "static-web-deployment"
+        DOCKER_IMAGE     = "rakeshramch/static-web"
+        DOCKER_TAG       = "${BUILD_NUMBER}"
+        KUBE_NAMESPACE   = "default"
+        DEPLOYMENT_NAME  = "static-web-deployment"
     }
 
     stages {
@@ -19,7 +19,10 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                bat "docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% ."
+                bat """
+                docker version
+                docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                """
             }
         }
 
@@ -30,14 +33,18 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat "echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin"
+                    bat """
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    """
                 }
             }
         }
 
         stage('Push Image to Docker Hub') {
             steps {
-                bat "docker push %DOCKER_IMAGE%:%DOCKER_TAG%"
+                bat """
+                docker push %DOCKER_IMAGE%:%DOCKER_TAG%
+                """
             }
         }
 
@@ -45,14 +52,20 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat """
-                    echo Applying Kubernetes manifests...
+                    echo ===== Kubernetes Client =====
+                    kubectl version --client
+
+                    echo ===== Cluster Nodes =====
+                    kubectl get nodes
+
+                    echo ===== Apply Deployment & Service =====
                     kubectl apply -f deployment.yaml -n %KUBE_NAMESPACE%
                     kubectl apply -f service.yaml -n %KUBE_NAMESPACE%
 
-                    echo Updating deployment image...
+                    echo ===== Update Image =====
                     kubectl set image deployment/%DEPLOYMENT_NAME% static-web=%DOCKER_IMAGE%:%DOCKER_TAG% -n %KUBE_NAMESPACE%
 
-                    echo Waiting for rollout...
+                    echo ===== Rollout Status =====
                     kubectl rollout status deployment/%DEPLOYMENT_NAME% -n %KUBE_NAMESPACE%
                     """
                 }
@@ -62,10 +75,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ SUCCESS: Jenkins → Docker → Docker Hub → Kubernetes (Windows)"
+            echo "✅ Jenkins (Windows): Docker image pushed & Kubernetes deployment successful"
         }
         failure {
-            echo "❌ Pipeline Failed"
+            echo "❌ Jenkins Pipeline Failed – Check Kubernetes stage logs"
         }
     }
 }
