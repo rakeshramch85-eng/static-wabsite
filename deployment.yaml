@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: static-web
-        image: rakeshramch/static-web:latest
+        image: docker pull rakeshramch/static-web
         ports:
         - containerPort: 80
